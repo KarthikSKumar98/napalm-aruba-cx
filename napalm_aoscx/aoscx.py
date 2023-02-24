@@ -49,12 +49,12 @@ import napalm.base.constants as c
 
 # Aruba AOS-CX lib
 import pyaoscx
-from pyaoscx import session, interface, system, common_ops, port, lldp, mac, vlan, vrf, arp
+from pyaoscx.session import Session
 
 class AOSCXDriver(NetworkDriver):
     """NAPALM driver for Aruba AOS-CX."""
 
-    def __init__(self, hostname, username, password, timeout=60, optional_args=None):
+    def __init__(self, hostname, username, password, version, timeout=60, optional_args=None):
         """NAPALM Constructor for AOS-CX."""
         if optional_args is None:
             optional_args = {}
@@ -62,14 +62,15 @@ class AOSCXDriver(NetworkDriver):
         self.username = username
         self.password = password
         self.timeout = timeout
+        self.version = version
 
         self.platform = "aoscx"
         self.profile = [self.platform]
-        self.session_info = {}
+        self.session = None
         self.isAlive = False
         self.candidate_config = ''
 
-        self.base_url = "https://{0}/rest/v1/".format(self.hostname)
+        self.base_url = "https://{0}/rest/v{1}/".format(self.hostname, self.version)
 
     def open(self):
         """
