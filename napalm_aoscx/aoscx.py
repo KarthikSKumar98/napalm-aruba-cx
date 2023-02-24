@@ -54,6 +54,7 @@ from pyaoscx.vlan import Vlan
 from pyaoscx.interface import Interface
 from pyaoscx.device import Device
 from pyaoscx.mac import Mac
+from pyaoscx.configuration import Configuration
 
 class AOSCXDriver(NetworkDriver):
     """NAPALM driver for Aruba AOS-CX."""
@@ -865,21 +866,40 @@ def get_mac_address_table(self):
 
         return temp_info_dict
 
-    def _get_resource_utilization(self, params={}, **kwargs):
+def get_config(self, retrieve="all", full=False, sanitized=False):
         """
-        Perform a GET call to get the cpu, memory, and open_fds of the switch
-        Note that this works for physical devices, not an OVA.
-
-        :param params: Dictionary of optional parameters for the GET request
-        :param kwargs:
-            keyword s: requests.session object with loaded cookie jar
-            keyword url: URL in main() function
-        :return: Dictionary containing resource utilization information
+        Return the configuration of a device. Currently this is limited to JSON format
+        :param retrieve: String to determine which configuration type you want to retrieve, default is all of them.
+                              The rest will be set to "".
+        :param full: Boolean to retrieve all the configuration. (Not supported)
+        :param sanitized: Boolean to remove secret data. (Not supported)
+        
+        :return: The object returned is a dictionary with a key for each configuration store:
+            - running(string) - Representation of the native running configuration
+            - candidate(string) - Representation of the candidate configuration. 
+            - startup(string) - Representation of the native startup configuration.
         """
+        if retrieve not in ["running", "candidate", "startup", "all"]:
+            raise Exception("ERROR: Not a valid option to retrieve.\nPlease select from 'running', 'candidate', "
+                            "'startup', or 'all'")
+        else:
+            config = Configuration(self.session)
+            running_config = ""
+            startup_config = ""
 
-        target_url = kwargs["url"] + "system/subsystems/management_module/*"
-
-        response = kwargs["s"].get(target_url, params=params, verify=False)
+            if retrieve == "running":
+                running_config = config.get_full_config()
+            elif retrieve == "startup":
+                startup_config = config.get_full_config(config_name="startup-config")
+            elif retrieve == "all":
+                running_config = config.get_full_config()
+                startup_config = config.get_full_config(config_name="startup-config")
+            config_dict = {
+                        "running": running_config,
+                        "startup": startup_config,
+                        "candidate": ""
+            }
+            return config_dict
 
         if not common_ops._response_ok(response, "GET"):
             logging.warning("FAIL: Getting dictionary of resource utilization info failed with status code %d: %s"
