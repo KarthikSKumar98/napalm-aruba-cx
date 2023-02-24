@@ -199,11 +199,11 @@ class AOSCXDriver(NetworkDriver):
          * mac_address (string)
         """
         interfaces_return = {}
-        interface_list = interface.get_all_interface_names(**self.session_info)
-        for line in interface_list:
-            interface_details = interface.get_interface(line, **self.session_info)
-            if 'description' not in interface_details:
-                interface_details['description'] = ""
+        interface_list = Interface.get_facts(self.session)
+        for interface in interface_list:
+            interface_details = interface_list[interface]
+            if 'description' not in interface_details or interface_details["description"] == None:
+                interface_details["description"] = ""
             if 'max_speed' not in interface_details['hw_intf_info']:
                 speed = 'N/A'
             else:
@@ -217,7 +217,7 @@ class AOSCXDriver(NetworkDriver):
             else:
                 mac_address = interface_details['hw_intf_info']['mac_addr']
             interface_dictionary = {
-                line: {
+                interface: {
                     'is_up': (interface_details['link_state'] == "up"),
                     'is_enabled': (interface_details['admin_state'] == "up"),
                     'description': interface_details['description'],
@@ -228,7 +228,6 @@ class AOSCXDriver(NetworkDriver):
                 }
             }
             interfaces_return.update(interface_dictionary)
-
         return interfaces_return
 
     def get_interfaces_counters(self):
