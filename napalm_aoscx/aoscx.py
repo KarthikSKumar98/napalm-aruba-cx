@@ -77,8 +77,8 @@ class AOSCXDriver(NetworkDriver):
         Implementation of NAPALM method 'open' to open a connection to the device.
         """
         try:
-            self.session_info = dict(s=session.login(self.base_url, self.username,
-                                                             self.password), url=self.base_url)
+            self.session = Session(self.hostname, self.version)
+            self.session.open(self.username, self.password)
             self.isAlive = True
         except ConnectionError as error:
             # Raised if device not available or HTTPS REST is not enabled
@@ -89,7 +89,11 @@ class AOSCXDriver(NetworkDriver):
         Implementation of NAPALM method 'close'. Closes the connection to the device and does
         the necessary cleanup.
         """
-        session.logout(**self.session_info)
+        session_info = {
+            's' : self.session.s,
+            'url': self.base_url
+        }
+        Session.logout(**session_info)
         self.isAlive = False
 
     def is_alive(self):
