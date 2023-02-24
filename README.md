@@ -6,22 +6,15 @@ All AOS-CX devices are supported, however the AOS-CX switch firmware should be v
 may have not been properly tested in older versions.
 
 ## Current Support Functionality 
-    * get_arp_table - Get the ARP table from a device.
-    * get_config - Get configuration from the device.
+    * is_alive - Check to see if the connection to the device is up.
     * get_facts - Get the version, serial number, vendor, model, and uptime from a device.
+    * get_vlans - Get the Vlans information of a device.
     * get_interfaces - Get list of interfaces from a device.
     * get_interfaces_ip - Get list of interface IP addresses from a device.
-    * get_lldp_neighbors - Get the list of LLDP Neighbors from a device.
-    * get_lldp_neighbors_detail - Get LLDP Neighbor details from a device.
     * get_mac_address_table - Get the MAC Address table from a device.
-    * get_ntp_servers - Gets NTP information from a network device.
-    * get_route_to - Shows an IP route on a device.
-    * get_snmp_information - Get the SNMP information of a device.
-    * get_vlans - Get the Vlans information of a device.
-    * is_alive - Check to see if the connection to the device is up.
-    * ping - Execute a ping command from the device.
+    * get_config - Get configuration from the device.
     
-    Early versions of this driver will focus on the Get functions.  Configuration handling is in current development.
+    Early versions of this driver will focus on the Get functions.
 
 ## Getting Started
 For more information and guides to help get started, check out the [Aruba Developer Hub section for NAPALM][devhub-link]. 
