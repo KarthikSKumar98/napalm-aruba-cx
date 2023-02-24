@@ -485,7 +485,7 @@ class AOSCXDriver(NetworkDriver):
                 )
         return arp_entries
 
-    def get_interfaces_ip(self):
+def get_interfaces_ip(self):
         """
         Implementation of NAPALM method get_interfaces_ip.  This retrieves all of the IP addresses
         on all interfaces.
@@ -494,46 +494,51 @@ class AOSCXDriver(NetworkDriver):
         Values of the main dictionary represent are dictionaries that may consist of two keys
         'ipv4' and 'ipv6' (one, both or none) which are themselves dictionaries with the IP
         addresses as keys.
-        Note: VSF ports are not implemented
         Each IP Address dictionary has the following keys:
             * prefix_length (int)
         """
         interface_ip_dictionary = {}
-        interface_list = interface.get_all_interface_names(**self.session_info)
-        for line in interface_list:
-            interface_info = port.get_port(line, **self.session_info)
-            try:
-                interface_ip_list = {}
-                ip4_address = {}
-                if ('ip4_address' in interface_info and len(interface_info['ip4_address']) > 0):
-                    ip4_address= {
-                    interface_info['ip4_address'][:interface_info['ip4_address'].rfind('/')]: {
+        interface_details_dictionary = Interface.get_facts(self.session)
+        for name, details in interface_details_dictionary.items():
+            interface_ip_list = {}
+            interface_obj = Interface(self.session, name)
+            interface_obj.get()
+
+            ip4_address = {}
+            if (('ip4_address' in details) and (details['ip4_address'] is not None) and (len(details['ip4_address']) > 0)):
+                ip4_address= {
+                    details['ip4_address'][:details['ip4_address'].rfind('/')]: {
                         'prefix_length':
-                            int(interface_info['ip4_address']
-                            [interface_info['ip4_address'].rfind('/') + 1:])
+                            int(details['ip4_address']
+                            [details['ip4_address'].rfind('/') + 1:])
                         }
                     }
-                ipv6_addresses = {}
-                ip6_keys = ['ip6_addresses', 'ip6_address_link_local', 'ip6_autoconfigured_addresses']
-                for key in ip6_keys:
-                    if (key in interface_info and len(interface_info[key]) > 0):
-                        for address in interface_info[key]:
-                            ipv6_addresses[address[:address.rfind('/')]] = {
-                                'prefix_length': int(address[address.rfind('/') + 1:])
-                            }
-                            
-                if (len(ip4_address) > 0):
-                    interface_ip_list['ipv4'] = ip4_address
+                    
+            ip6_address = {}
+            ip6_keys = ['ip6_address_link_local']
+            for key in ip6_keys:
+                if (key in details and len(details[key]) > 0):
+                    addresses = list(details[key].keys())
+                    for address in addresses:
+                        ip6_address[address[:address.rfind('/')]] = {
+                            'prefix_length': int(address[address.rfind('/') + 1:])
+                        }
+            if hasattr(interface_obj, 'ip6_addresses') and len(interface_obj.ip6_addresses) > 0:
+                for ip6_address_obj in interface_obj.ip6_addresses:
+                    address = ip6_address_obj.address
+                    ip6_address[address[:address.rfind('/')]] = {
+                            'prefix_length': int(address[address.rfind('/') + 1:])
+                    }
+    
+            if (len(ip4_address) > 0):
+                interface_ip_list['ipv4'] = ip4_address
 
-                if (len(ipv6_addresses) > 0):
-                    interface_ip_list['ipv6'] = ipv6_addresses
+            if (len(ip6_address) > 0):
+                interface_ip_list['ipv6'] = ip6_address
 
-                if (len(interface_ip_list) > 0):
-                    interface_ip_dictionary[line] = interface_ip_list
-
-            except Exception as e:
-                print(line)
-                print(e)
+            if (len(interface_ip_list) > 0):
+                interface_ip_dictionary[name] = interface_ip_list
+        
         return interface_ip_dictionary
 
 
