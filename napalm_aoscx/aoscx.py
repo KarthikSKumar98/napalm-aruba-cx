@@ -53,6 +53,7 @@ from pyaoscx.session import Session
 from pyaoscx.vlan import Vlan
 from pyaoscx.interface import Interface
 from pyaoscx.device import Device
+from pyaoscx.mac import Mac
 
 class AOSCXDriver(NetworkDriver):
     """NAPALM driver for Aruba AOS-CX."""
@@ -541,12 +542,10 @@ def get_interfaces_ip(self):
         
         return interface_ip_dictionary
 
-
-    def get_mac_address_table(self):
+def get_mac_address_table(self):
         """
         Implementation of NAPALM method get_mac_address_table.  This retrieves information of all
         entries of the MAC address table.
-        Note: 'last_move' is not supported, and will default to None
         :return: Returns a lists of dictionaries. Each dictionary represents an entry in the
         MAC Address Table, having the following keys:
             * mac (string)
@@ -556,21 +555,29 @@ def get_interfaces_ip(self):
             * static (boolean)
             * moves (int)
             * last_move (float)
+        NOTE: 'moves' and 'last_move' is not supported and will default to None
         """
+        mac_list = []
+        vlan_list = Vlan.get_all(self.session)
+        for vlan in vlan_list:
+            mac_list.append(Mac.get_all(self.session, vlan_list[vlan]))
+        mac_list = list(filter(lambda mac_entry: (len(mac_entry) > 0), mac_list))
         mac_entries = []
-        mac_list = mac.get_all_mac_addresses_on_system(**self.session_info)
-        for mac_uri in mac_list:
-            full_uri = mac_uri[mac_uri.find('vlans/') + 6:]
-            mac = common_ops._replace_special_characters(full_uri[full_uri.rfind('/') + 1:])
-            full_uri = full_uri[:full_uri.rfind('/')]
-            mac_type = full_uri[full_uri.rfind('/') + 1:]
-            full_uri = full_uri[:full_uri.rfind('/')]
-            vlan = int(full_uri[:full_uri.rfind('/')])
-            mac_info = mac.get_mac_info(vlan, mac_type, mac, **self.session_info)
+        for mac in mac_list:
+            mac_key = list(mac.keys())[0]
+            mac_attributes = mac_key.split(',')
+            mac_type = mac_attributes[0]
+            mac_address = mac_attributes[1]
+
+            mac_obj = mac[mac_key]
+            mac_obj.get()
+            vlan = int(mac_obj._parent_vlan.__dict__['id'])
+            interface = list(mac_obj.__dict__['_original_attributes']['port'].keys())[0]
+
             mac_entries.append(
                 {
-                    'mac': mac,
-                    'interface': mac_info['port'][mac_info['port'].rfind('/')+1],
+                    'mac': mac_address,
+                    'interface': interface,
                     'vlan': vlan,
                     'static': (mac_type == 'static'),
                     'active': True,
