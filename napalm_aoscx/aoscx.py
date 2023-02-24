@@ -50,6 +50,8 @@ import napalm.base.constants as c
 # Aruba AOS-CX lib
 import pyaoscx
 from pyaoscx.session import Session
+from pyaoscx.interface import Interface
+from pyaoscx.device import Device
 
 class AOSCXDriver(NetworkDriver):
     """NAPALM driver for Aruba AOS-CX."""
@@ -118,20 +120,27 @@ class AOSCXDriver(NetworkDriver):
          * serial_number - Serial number of the device
          * interface_list - List of the interfaces of the device
         """
-        systeminfo = system.get_system_info(**self.session_info)
-        productinfo = system.get_product_info(**self.session_info)
-
-        uptime_seconds = (int(systeminfo['boot_time']))/1000
-
+        switch = Device(self.session)
+        switch.get()
+        switch.get_subsystems()
+        uptime_seconds = (int(switch.boot_time)/1000)
+        interface_list = Interface.get_all(self.session)
+        product_info = {}
+        keys = ['management_module,1/1', 'chassis,1']
+        for key in keys:
+            if (len(switch.subsystems[key]['product_info']['serial_number']) > 0):
+                product_info = switch.subsystems[key]['product_info']
+                break
+        
         fact_info = {
             'uptime': uptime_seconds,
-            'vendor': 'Aruba',
-            'os_version': systeminfo['software_info']['build_id'],
-            'serial_number': productinfo['product_info']['serial_number'],
-            'model': productinfo['product_info']['product_name'],
-            'hostname': systeminfo['hostname'],
-            'fqdn':systeminfo['hostname'],
-            'interface_list': interface.get_all_interface_names(**self.session_info)
+            'vendor': product_info['vendor'],
+            'os_version': switch.software_info['build_id'],
+            'serial_number': product_info['serial_number'],
+            'model': product_info['product_name'],
+            'hostname': switch.hostname,
+            'fqdn': switch.hostname,
+            'interface_list': list(interface_list.keys())
         }
         return fact_info
 
